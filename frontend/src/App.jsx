@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import SongInput from './components/SongInput'
+import AudioPlayer from './components/AudioPlayer'
 import './App.css'
 
 function App() {
@@ -32,6 +33,8 @@ function App() {
       </header>
 
       <SongInput onProcess={handleProcess} />
+
+      {currentSong && <AudioPlayer key={currentSong.name} song={currentSong} />}
 
       {songs.length > 0 && (
         <div className="song-library">
