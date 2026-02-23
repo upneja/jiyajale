@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pyt
 
 # Python dependencies (skip torch/torchaudio since already installed)
 COPY requirements.txt .
-RUN grep -v -E "^(torch|torchaudio|nvidia|triton|cuda)" requirements.txt > requirements-filtered.txt \
+RUN grep -v -E "^(torch==|torchaudio==|nvidia|triton|cuda)" requirements.txt > requirements-filtered.txt \
     && pip install --no-cache-dir -r requirements-filtered.txt
 
 # Frontend build
