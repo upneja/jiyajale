@@ -1,0 +1,8 @@
+.venv
+output
+.git
+__pycache__
+*.pyc
+node_modules
+frontend/dist
+.DS_Store

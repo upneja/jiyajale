@@ -19,6 +19,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.pitch import pitch_shift_audio
 from backend.processing import SongResult, process_song
@@ -29,12 +30,13 @@ from backend.processing import SongResult, process_song
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
+FRONTEND_BUILD = BASE_DIR / "frontend" / "dist"
 
 app = FastAPI(title="Jiyajale API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -238,3 +240,19 @@ async def ws_status(websocket: WebSocket, song_name: str) -> None:
             await asyncio.sleep(0.5)
     except WebSocketDisconnect:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Serve React frontend build (production)
+# ---------------------------------------------------------------------------
+
+if FRONTEND_BUILD.exists():
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str) -> FileResponse:
+        """Serve React SPA - try exact file first, fall back to index.html."""
+        file_path = FRONTEND_BUILD / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(FRONTEND_BUILD / "index.html"))
+
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_BUILD / "assets")), name="assets")
