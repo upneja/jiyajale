@@ -187,7 +187,8 @@ async def process(
                 }
 
     # Fire and forget — process in background thread
-    asyncio.get_event_loop().run_in_executor(None, _run)
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, _run)
 
     return {"name": resolved_name, "status": "processing"}
 
