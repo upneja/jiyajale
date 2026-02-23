@@ -134,7 +134,7 @@ async def process(
     song_name: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
 ) -> dict:
-    """Download/convert a song and run Demucs stem separation."""
+    """Kick off song processing in the background and return immediately."""
     if not query and not file:
         raise HTTPException(
             status_code=400, detail="Provide either 'query' or upload a file."
@@ -155,7 +155,7 @@ async def process(
         with open(local_file, "wb") as fh:
             fh.write(await file.read())
 
-    # --- Task 5: progress callback ---
+    # Mark job as queued
     with _jobs_lock:
         _active_jobs[resolved_name] = {"status": "queued", "progress": 0}
 
@@ -163,31 +163,48 @@ async def process(
         with _jobs_lock:
             _active_jobs[resolved_name] = {"status": stage, "progress": pct}
 
-    def _run() -> SongResult:
-        return process_song(
-            query=query,
-            local_file=local_file,
-            song_name=resolved_name,
-            output_dir=OUTPUT_DIR,
-            on_progress=on_progress,
-        )
+    def _run() -> None:
+        try:
+            result = process_song(
+                query=query,
+                local_file=local_file,
+                song_name=resolved_name,
+                output_dir=OUTPUT_DIR,
+                on_progress=on_progress,
+            )
+            with _jobs_lock:
+                _active_jobs[resolved_name] = {
+                    "status": "done",
+                    "progress": 100,
+                    "name": result.name,
+                }
+        except Exception as exc:
+            with _jobs_lock:
+                _active_jobs[resolved_name] = {
+                    "status": "error",
+                    "progress": 0,
+                    "error": str(exc),
+                }
 
-    try:
-        result: SongResult = await asyncio.to_thread(_run)
-    except Exception as exc:
-        with _jobs_lock:
-            _active_jobs[resolved_name] = {"status": "error", "progress": 0, "error": str(exc)}
-        raise HTTPException(status_code=500, detail=str(exc))
+    # Fire and forget — process in background thread
+    asyncio.get_event_loop().run_in_executor(None, _run)
 
+    return {"name": resolved_name, "status": "processing"}
+
+
+# ---------------------------------------------------------------------------
+# Job status polling endpoint
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/jobs/{song_name}")
+async def job_status(song_name: str) -> dict:
+    """Return the current processing status for *song_name*."""
     with _jobs_lock:
-        _active_jobs[resolved_name] = {"status": "done", "progress": 100}
-
-    return {
-        "name": result.name,
-        "original": str(result.original),
-        "instrumental": str(result.instrumental),
-        "vocals": str(result.vocals),
-    }
+        status = _active_jobs.get(song_name)
+    if status is None:
+        raise HTTPException(status_code=404, detail="No such job")
+    return status
 
 
 # ---------------------------------------------------------------------------

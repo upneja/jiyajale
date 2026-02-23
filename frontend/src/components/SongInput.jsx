@@ -6,6 +6,7 @@ function SongInput({ onProcess }) {
   const [file, setFile] = useState(null)
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
   const fileInputRef = useRef(null)
 
@@ -36,6 +37,23 @@ function SongInput({ onProcess }) {
     setDragging(false)
   }
 
+  async function pollJob(name) {
+    // Poll /api/jobs/{name} until done or error
+    while (true) {
+      await new Promise((r) => setTimeout(r, 2000))
+      try {
+        const res = await fetch(`/api/jobs/${encodeURIComponent(name)}`)
+        if (!res.ok) throw new Error(`Poll failed: ${res.status}`)
+        const data = await res.json()
+        setProgress(data.status === 'done' ? 'Complete!' : `${data.status} (${Math.round(data.progress)}%)`)
+        if (data.status === 'done') return data
+        if (data.status === 'error') throw new Error(data.error || 'Processing failed')
+      } catch (err) {
+        throw err
+      }
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!songName.trim()) {
@@ -49,6 +67,7 @@ function SongInput({ onProcess }) {
 
     setError(null)
     setLoading(true)
+    setProgress('Uploading...')
 
     try {
       const formData = new FormData()
@@ -66,8 +85,17 @@ function SongInput({ onProcess }) {
         throw new Error(data.detail || `Server error: ${res.status}`)
       }
 
-      const result = await res.json()
-      onProcess(result)
+      const { name } = await res.json()
+      setProgress('Processing started...')
+
+      // Poll until processing completes
+      await pollJob(name)
+
+      // Fetch updated song list and select the new song
+      const songsRes = await fetch('/api/songs')
+      const songs = await songsRes.json()
+      const processed = songs.find((s) => s.name === name)
+      if (processed) onProcess(processed)
 
       // Reset form
       setQuery('')
@@ -77,6 +105,7 @@ function SongInput({ onProcess }) {
       setError(err.message)
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -144,7 +173,7 @@ function SongInput({ onProcess }) {
       {error && <p className="error-msg">{error}</p>}
 
       <button type="submit" className="submit-btn" disabled={loading}>
-        {loading ? 'Processing...' : 'Make Karaoke Track'}
+        {loading ? (progress || 'Processing...') : 'Make Karaoke Track'}
       </button>
     </form>
   )
