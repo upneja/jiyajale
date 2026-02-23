@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
+
+# Use htdemucs (fast, 1 model) on Railway/CI, htdemucs_ft (4 models) locally
+DEMUCS_MODEL = os.environ.get("DEMUCS_MODEL", "htdemucs_ft")
 
 
 # ---------------------------------------------------------------------------
@@ -87,15 +91,9 @@ def run_demucs(
     song_dir: Path,
     on_progress: Optional[Callable[[str, float], None]] = None,
 ) -> tuple[Path, Path]:
-    """Run Demucs ``htdemucs_ft`` two-stem separation on *wav_path*.
+    """Run Demucs two-stem separation on *wav_path*.
 
-    Demucs writes stems to::
-
-        {song_dir}/stems/htdemucs_ft/{wav_stem}/no_vocals.wav
-        {song_dir}/stems/htdemucs_ft/{wav_stem}/vocals.wav
-
-    Because the input file is always saved as ``original.wav`` the stem
-    sub-directory is always named ``original``.
+    Uses the model specified by DEMUCS_MODEL env var (default: htdemucs_ft).
 
     Returns ``(instrumental_path, vocals_path)``.
     """
@@ -105,10 +103,11 @@ def run_demucs(
     if on_progress:
         on_progress("separating", 0.0)
 
+    model = DEMUCS_MODEL
     cmd = [
         sys.executable, "-m", "demucs",
         "--two-stems", "vocals",
-        "-n", "htdemucs_ft",
+        "-n", model,
         "-o", str(stems_dir),
         str(wav_path),
     ]
@@ -119,7 +118,7 @@ def run_demucs(
         )
 
     stem = wav_path.stem  # "original"
-    base = stems_dir / "htdemucs_ft" / stem
+    base = stems_dir / model / stem
     instrumental = base / "no_vocals.wav"
     vocals = base / "vocals.wav"
 
@@ -156,9 +155,9 @@ def process_song(
     song_dir = output_dir / song_name
     original_wav = song_dir / "original.wav"
     instrumental_path = (
-        song_dir / "stems" / "htdemucs_ft" / "original" / "no_vocals.wav"
+        song_dir / "stems" / DEMUCS_MODEL / "original" / "no_vocals.wav"
     )
-    vocals_path = song_dir / "stems" / "htdemucs_ft" / "original" / "vocals.wav"
+    vocals_path = song_dir / "stems" / DEMUCS_MODEL / "original" / "vocals.wav"
 
     # Early exit if already processed
     if instrumental_path.exists() and vocals_path.exists():

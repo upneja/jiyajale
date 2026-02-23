@@ -36,6 +36,7 @@ COPY pytest.ini .
 # Serve frontend build from FastAPI
 ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
+ENV DEMUCS_MODEL=htdemucs
 
 EXPOSE 8000
 

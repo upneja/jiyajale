@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.pitch import pitch_shift_audio
-from backend.processing import SongResult, process_song
+from backend.processing import DEMUCS_MODEL, SongResult, process_song
 
 # ---------------------------------------------------------------------------
 # Application setup
@@ -48,6 +48,7 @@ app.add_middleware(
 
 _active_jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
+_processing_semaphore = threading.Semaphore(1)  # Only 1 Demucs job at a time
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -63,8 +64,8 @@ def slugify(text: str) -> str:
 
 TRACK_MAP = {
     "original": "original.wav",
-    "instrumental": "stems/htdemucs_ft/original/no_vocals.wav",
-    "vocals": "stems/htdemucs_ft/original/vocals.wav",
+    "instrumental": f"stems/{DEMUCS_MODEL}/original/no_vocals.wav",
+    "vocals": f"stems/{DEMUCS_MODEL}/original/vocals.wav",
 }
 
 
@@ -93,10 +94,10 @@ async def list_songs() -> list[dict]:
             continue
         original = (song_dir / "original.wav").exists()
         instrumental = (
-            song_dir / "stems" / "htdemucs_ft" / "original" / "no_vocals.wav"
+            song_dir / "stems" / DEMUCS_MODEL / "original" / "no_vocals.wav"
         ).exists()
         vocals = (
-            song_dir / "stems" / "htdemucs_ft" / "original" / "vocals.wav"
+            song_dir / "stems" / DEMUCS_MODEL / "original" / "vocals.wav"
         ).exists()
         songs.append(
             {
@@ -164,27 +165,28 @@ async def process(
             _active_jobs[resolved_name] = {"status": stage, "progress": pct}
 
     def _run() -> None:
-        try:
-            result = process_song(
-                query=query,
-                local_file=local_file,
-                song_name=resolved_name,
-                output_dir=OUTPUT_DIR,
-                on_progress=on_progress,
-            )
-            with _jobs_lock:
-                _active_jobs[resolved_name] = {
-                    "status": "done",
-                    "progress": 100,
-                    "name": result.name,
-                }
-        except Exception as exc:
-            with _jobs_lock:
-                _active_jobs[resolved_name] = {
-                    "status": "error",
-                    "progress": 0,
-                    "error": str(exc),
-                }
+        with _processing_semaphore:
+            try:
+                result = process_song(
+                    query=query,
+                    local_file=local_file,
+                    song_name=resolved_name,
+                    output_dir=OUTPUT_DIR,
+                    on_progress=on_progress,
+                )
+                with _jobs_lock:
+                    _active_jobs[resolved_name] = {
+                        "status": "done",
+                        "progress": 100,
+                        "name": result.name,
+                    }
+            except Exception as exc:
+                with _jobs_lock:
+                    _active_jobs[resolved_name] = {
+                        "status": "error",
+                        "progress": 0,
+                        "error": str(exc),
+                    }
 
     # Fire and forget — process in background thread
     loop = asyncio.get_running_loop()
