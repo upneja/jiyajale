@@ -13,9 +13,13 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 
 WORKDIR /app
 
-# Python dependencies (install first for caching)
+# Install CPU-only PyTorch first (much smaller than CUDA version)
+RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Python dependencies (skip torch/torchaudio since already installed)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN grep -v -E "^(torch|torchaudio|nvidia|triton|cuda)" requirements.txt > requirements-filtered.txt \
+    && pip install --no-cache-dir -r requirements-filtered.txt
 
 # Frontend build
 COPY frontend/package*.json frontend/
