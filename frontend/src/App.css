@@ -1,42 +1,397 @@
-#root {
-  max-width: 1280px;
+/* ==========================================
+   App Shell
+   ========================================== */
+
+.app {
+  max-width: 600px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.app-header h1 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -0.5px;
+}
+
+.app-subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-top: 0.4rem;
+}
+
+/* ==========================================
+   Song Input
+   ========================================== */
+
+.song-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--surface);
+  user-select: none;
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--primary);
+  background: var(--surface-hover);
+}
+
+.drop-zone.has-file {
+  border-color: var(--success);
+  border-style: solid;
+}
+
+.drop-zone-label {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.drop-zone.has-file .drop-zone-label {
+  color: var(--text);
+}
+
+.remove-file {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.remove-file:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.input-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.input-divider::before,
+.input-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.text-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.text-input::placeholder {
+  color: var(--text-muted);
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.text-input:disabled {
+  opacity: 0.5;
+}
+
+.error-msg {
+  color: var(--primary);
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+}
+
+.submit-btn {
+  padding: 0.85rem 1.5rem;
+  background: var(--primary);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.01em;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+/* ==========================================
+   Song Library
+   ========================================== */
+
+.song-library {
+  margin-top: 2.5rem;
+}
+
+.song-library h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+
+.song-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.song-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  gap: 0.75rem;
+}
+
+.song-item:hover {
+  background: var(--surface-hover);
+  border-color: #555;
+}
+
+.song-item.active {
+  border-color: var(--primary);
+  background: var(--surface-hover);
+}
+
+.song-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-tracks {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.track-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(233, 69, 96, 0.2);
+  color: var(--primary);
+  border: 1px solid rgba(233, 69, 96, 0.35);
+  font-weight: 500;
+}
+
+/* ==========================================
+   Audio Player
+   ========================================== */
+
+.audio-player {
+  margin-top: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.player-song-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================
+   Track Selector
+   ========================================== */
+
+.track-selector {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+.track-btn {
+  flex: 1;
+  padding: 0.6rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.track-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--text);
+}
+
+.track-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.track-btn.unavailable {
+  opacity: 0.3;
+}
+
+/* ==========================================
+   Play Button
+   ========================================== */
+
+.play-btn {
+  width: 100%;
+  padding: 0.85rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+
+.play-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.play-btn.playing {
+  background: #555;
+}
+
+.play-btn.playing:hover:not(:disabled) {
+  background: #666;
+}
+
+/* ==========================================
+   Pitch Control
+   ========================================== */
+
+.pitch-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pitch-label {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 2.5rem;
+}
+
+.pitch-slider {
+  flex: 1;
+  accent-color: var(--primary);
+  height: 4px;
+  cursor: pointer;
+}
+
+.pitch-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 2.5rem;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.reset-pitch-btn {
+  padding: 0.35rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  flex-shrink: 0;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.reset-pitch-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ==========================================
+   Export Button
+   ========================================== */
+
+.export-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: rgba(233, 69, 96, 0.1);
+}
+
+/* ==========================================
+   Responsive
+   ========================================== */
+
+@media (max-width: 480px) {
+  .app {
+    padding: 1.25rem 1rem 3rem;
   }
-  to {
-    transform: rotate(360deg);
+
+  .track-selector {
+    flex-direction: column;
   }
-}
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+  .pitch-control {
+    flex-wrap: wrap;
   }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }
