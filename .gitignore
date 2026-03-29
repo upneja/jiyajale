@@ -3,26 +3,74 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 *.egg-info/
 dist/
 build/
+.eggs/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Audio output (large WAV files)
+# Audio output — large WAV/MP3 files, never commit
 output/
+*.wav
+*.mp3
+*.flac
+*.aac
+*.m4a
+*.ogg
 
-# Node/React
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Node / React
 node_modules/
 frontend/build/
 frontend/dist/
-.env
-.env.local
+.npm
+
+# Vite
+dist/
+dist-ssr/
+*.local
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temporary
+*.tmp
+*.temp
+tmp/
+temp/

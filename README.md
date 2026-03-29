@@ -1,30 +1,91 @@
 # Jiyajale
 
-Turn any song into a karaoke track. Download from YouTube or use your own high-fidelity files (iTunes/ALAC), then let AI split the vocals from the instrumentals.
+Turn any song into a karaoke track. Paste a YouTube URL, type a song name, or drop in a local file — Jiyajale strips the vocals using Meta's Demucs AI and hands you a studio-quality instrumental.
 
-Built for mom's YouTube singing channel so she can sing over clean instrumentals of her favorite ghazals and Bollywood songs.
+Built for my mom's YouTube singing channel so she can sing over clean instrumentals of her favorite ghazals and Bollywood songs.
 
-## How It Works
+---
 
-```mermaid
-graph LR
-    A[Song Name / YouTube URL / Local File] --> B[yt-dlp Download]
-    B --> C[Demucs AI Separation]
-    C --> D[Instrumental Track]
-    C --> E[Isolated Vocals]
-    D --> F[Sing Over This]
-    E --> G[Use as Reference]
+## What it does
+
+Jiyajale runs a two-stage pipeline:
+
+1. **Acquire** — download from YouTube via yt-dlp (search by name or URL), or convert a local file (iTunes/ALAC) via ffmpeg
+2. **Separate** — run [Demucs htdemucs_ft](https://github.com/facebookresearch/demucs) (Meta's fine-tuned 4-model ensemble) to split the audio into `no_vocals.wav` and `vocals.wav`
+
+Everything stays lossless WAV throughout — no lossy compression at any stage.
+
+```
+output/kisi-ranjish/
+  original.wav                          — downloaded/converted source
+  stems/htdemucs_ft/original/
+    no_vocals.wav                       — instrumental  (sing over this)
+    vocals.wav                          — isolated vocals  (use as reference)
 ```
 
-Under the hood, [Demucs](https://github.com/facebookresearch/demucs) (by Meta) runs 4 fine-tuned neural networks to separate the audio. It processes in ~6-second chunks on your GPU and produces studio-quality stems.
+Processing takes ~6–7 minutes per song on an M4 Mac (Apple Silicon MPS acceleration).
 
-## Quick Start
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                       Input                             │
+│   YouTube URL / Search Query      Local File (ALAC/MP3) │
+└────────────────┬────────────────────────────┬───────────┘
+                 │                            │
+           yt-dlp download             ffmpeg convert
+                 │                            │
+                 └────────────┬───────────────┘
+                              │
+                         original.wav
+                              │
+                   Demucs htdemucs_ft
+                   (4 neural networks)
+                   MPS GPU on Apple Silicon
+                              │
+               ┌──────────────┴──────────────┐
+               │                             │
+        no_vocals.wav                    vocals.wav
+        (Instrumental)               (Isolated vocals)
+```
+
+**Phase 2 — Web UI** (fully implemented, ships in Docker):
+
+```
+React (Vite) → FastAPI → Demucs pipeline
+                  ↓
+           WebSocket progress updates
+           Pitch-shift export (librosa)
+           Song library browser
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| AI separation | [Demucs](https://github.com/facebookresearch/demucs) `htdemucs_ft` — fine-tuned 4-model ensemble |
+| GPU acceleration | PyTorch 2.10 + MPS (Apple Silicon) / CPU (Docker/Railway) |
+| YouTube download | [yt-dlp](https://github.com/yt-dlp/yt-dlp) — search-by-name or direct URL |
+| Audio conversion | ffmpeg |
+| Pitch shifting | librosa |
+| Backend API | FastAPI + WebSocket progress streaming |
+| Frontend | React 19, Vite, Tone.js |
+| Container | Docker (CPU PyTorch build for deployment) |
+| Deploy target | Railway |
+
+---
+
+## Quick Start — CLI
 
 ### Prerequisites
 
 - Python 3.13+
-- ffmpeg (`brew install ffmpeg`)
-- ~2GB disk for PyTorch + Demucs models (downloaded on first run)
+- ffmpeg — `brew install ffmpeg`
+- ~2 GB disk for PyTorch + Demucs models (downloaded on first run)
 
 ### Setup
 
@@ -36,114 +97,104 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Usage (CLI)
+### Run
 
 ```bash
-# By song name (searches YouTube)
+# By song name (yt-dlp searches YouTube for the top result)
 ./separate.sh "Chupke Chupke Raat Din Ghulam Ali" "chupke-chupke"
 
 # By YouTube URL
 ./separate.sh "https://youtube.com/watch?v=..." "song-name"
 ```
 
-Output:
-```
-output/song-name/
-  original.wav                              # Source audio
-  stems/htdemucs_ft/original/
-    no_vocals.wav                           # Instrumental - sing over this
-    vocals.wav                              # Isolated vocals
-```
+---
 
-Processing takes ~6-7 minutes per song on an M4 Mac.
+## Quick Start — Web UI
 
-## Architecture
+### Local development
 
-```mermaid
-graph TB
-    subgraph "Input Layer"
-        YT[YouTube URL/Search]
-        LF[Local File - iTunes/ALAC]
-    end
+```bash
+# Backend (from repo root, venv active)
+uvicorn backend.main:app --reload --port 8000
 
-    subgraph "Processing Pipeline"
-        DL[yt-dlp Download] --> WAV[Lossless WAV]
-        LF --> CONV[ffmpeg Convert] --> WAV
-        WAV --> DEMUCS[Demucs htdemucs_ft]
-        DEMUCS --> |4 Neural Networks| SPLIT{Two-Stem Split}
-    end
-
-    subgraph "Output"
-        SPLIT --> INST[no_vocals.wav - Instrumental]
-        SPLIT --> VOC[vocals.wav - Isolated Vocals]
-    end
-
-    YT --> DL
-
-    style DEMUCS fill:#e1f5fe
-    style INST fill:#c8e6c9
-    style VOC fill:#fff3e0
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev        # → http://localhost:5173
 ```
 
-## Tech Stack
+### Docker (production)
 
-| Component | Role |
-|-----------|------|
-| **[Demucs](https://github.com/facebookresearch/demucs) (htdemucs_ft)** | AI vocal/instrumental separation - fine-tuned variant for best quality |
-| **[PyTorch](https://pytorch.org/) + MPS** | GPU acceleration on Apple Silicon |
-| **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** | YouTube audio download |
-| **ffmpeg** | Audio format conversion |
-
-## Roadmap
-
-### Phase 2: Local Web App (Next)
-
-A browser-based UI so mom can use this without the terminal:
-
-```mermaid
-graph TB
-    subgraph "React Frontend"
-        UI[Song Input - URL / Search / File Upload]
-        PLAYER[Audio Player with Pitch Slider]
-        EXPORT[Export at Chosen Pitch]
-    end
-
-    subgraph "FastAPI Backend"
-        API[REST API + WebSocket]
-        PROC[Processing Queue]
-        PITCH[Pitch Shift Engine]
-    end
-
-    subgraph "AI Engine"
-        YTDLP[yt-dlp]
-        DEM[Demucs]
-        LIB[librosa - Pitch Shift]
-    end
-
-    UI --> API
-    API --> PROC
-    PROC --> YTDLP
-    PROC --> DEM
-    PLAYER --> |Real-time via Web Audio API| UI
-    EXPORT --> PITCH
-    API --> |WebSocket Progress| UI
+```bash
+docker build -t jiyajale .
+docker run -p 8000:8000 jiyajale
+# → http://localhost:8000
 ```
 
-- **Drag & drop** local files (iTunes purchases for best quality)
-- **Real-time pitch slider** in the browser (Web Audio API, no round-trip)
-- **Export at pitch** - bake the pitch change into a downloadable file
-- **Song library** - browse all previously processed songs
-- **Live progress** - WebSocket updates during processing
+The Docker build uses a CPU-only PyTorch image to keep the container lean. Set `DEMUCS_MODEL=htdemucs` (env var) for the faster single-model variant if processing time is a constraint.
 
-### Future Ideas
+---
 
-- Tempo adjustment (independent of pitch)
-- Lyrics display synced to playback
-- Favorites and playlists
+## API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/songs` | List all processed songs |
+| `POST` | `/api/process` | Submit a song (form: `query` or file upload + optional `song_name`) |
+| `GET` | `/api/jobs/{song_name}` | Poll processing status |
+| `GET` | `/api/audio/{song_name}/{track}` | Stream audio (`original` \| `instrumental` \| `vocals`) |
+| `POST` | `/api/pitch-shift` | Export pitch-shifted track (form: `song_name`, `track`, `semitones`) |
+| `WS` | `/ws/status/{song_name}` | WebSocket — real-time progress during separation |
+
+---
+
+## Key Design Decisions
+
+**`htdemucs_ft` over `htdemucs`** — The fine-tuned variant runs 4 neural network passes instead of 1, which is ~4× slower but produces audibly cleaner vocal removal. The residual bleed on the standard model was noticeable when singing over it; `_ft` is not.
+
+**WAV throughout** — Lossless at every stage. Lossy intermediate formats would degrade the separation quality and the final output.
+
+**`--two-stems vocals`** — Only splits into vocals + everything-else. The full four-stem output (drums / bass / vocals / other) isn't needed here and would be slower.
+
+**`ytsearch1:` prefix** — Lets yt-dlp accept both a raw search query and a direct URL through the same code path.
+
+**MPS on Apple Silicon, CPU in Docker** — The local workflow uses PyTorch MPS for GPU acceleration. The Docker build installs the smaller CPU-only wheel to keep image size manageable and avoid CUDA dependencies on the deploy target.
+
+---
+
+## Project Structure
+
+```
+jiyajale/
+├── separate.sh          — CLI entry point (download + separate)
+├── requirements.txt     — Python dependencies (pip freeze)
+├── Dockerfile           — Multi-stage build: Python + Node + ffmpeg
+├── railway.json         — Railway deploy config
+├── backend/
+│   ├── main.py          — FastAPI app, endpoints, WebSocket
+│   ├── processing.py    — yt-dlp download + Demucs separation pipeline
+│   ├── pitch.py         — Pitch-shift via librosa
+│   └── test_*.py        — pytest test suite
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   └── components/
+│   │       ├── SongInput.jsx   — URL / search / file upload
+│   │       └── AudioPlayer.jsx — Playback with pitch slider
+│   └── package.json
+├── docs/plans/          — Design docs and implementation plans
+├── PROCESS.md           — Technical one-pager
+└── WALKTHROUGH.md       — How this was built with Claude Code
+```
+
+---
 
 ## Background
 
-Built in ~15 minutes with [Claude Code](https://claude.com/claude-code). See [WALKTHROUGH.md](WALKTHROUGH.md) for the full story of how it came together, and [PROCESS.md](PROCESS.md) for technical details.
+Built in ~15 minutes using [Claude Code](https://claude.com/claude-code). See [WALKTHROUGH.md](WALKTHROUGH.md) for the full build story — every prompt, every error, everything Claude did autonomously. See [PROCESS.md](PROCESS.md) for technical details.
+
+---
 
 ## License
 
