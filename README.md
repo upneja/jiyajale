@@ -192,7 +192,7 @@ jiyajale/
 
 ## Background
 
-Built in ~15 minutes using [Claude Code](https://claude.com/claude-code). See [WALKTHROUGH.md](WALKTHROUGH.md) for the full build story — every prompt, every error, everything Claude did autonomously. See [PROCESS.md](PROCESS.md) for technical details.
+Built in ~15 minutes using [Claude Code](https://claude.com/claude-code). See [PROCESS.md](PROCESS.md) for technical details.
 
 ---
 
