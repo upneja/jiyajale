@@ -1,4 +1,46 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+
+const STEP_LABELS = {
+  queued: 'Waiting in queue...',
+  uploading: 'Uploading file...',
+  converting: 'Converting to WAV...',
+  downloading: 'Downloading from YouTube...',
+  downloaded: 'Download complete, starting separation...',
+  separating: 'Separating vocals with Demucs AI...',
+  done: 'Complete!',
+  error: 'Something went wrong',
+}
+
+const STEP_ORDER = ['uploading', 'converting', 'downloading', 'downloaded', 'separating', 'done']
+
+function getStepIndex(status) {
+  const idx = STEP_ORDER.indexOf(status)
+  return idx === -1 ? 0 : idx
+}
+
+function getOverallProgress(status, pct) {
+  // Map stages to overall progress ranges
+  if (status === 'queued' || status === 'uploading') return 5
+  if (status === 'converting' || status === 'downloading') return 15
+  if (status === 'downloaded') return 40
+  if (status === 'separating') return 40 + (pct / 100) * 55 // 40-95%
+  if (status === 'done') return 100
+  return 0
+}
+
+function ElapsedTime({ startTime }) {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [startTime])
+
+  const mins = Math.floor(elapsed / 60)
+  const secs = elapsed % 60
+  return <span className="elapsed-time">{mins}:{secs.toString().padStart(2, '0')}</span>
+}
 
 function SongInput({ onProcess }) {
   const [query, setQuery] = useState('')
@@ -6,7 +48,8 @@ function SongInput({ onProcess }) {
   const [file, setFile] = useState(null)
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [progress, setProgress] = useState(null)
+  const [jobStatus, setJobStatus] = useState(null) // { status, progress }
+  const [startTime, setStartTime] = useState(null)
   const [error, setError] = useState(null)
   const fileInputRef = useRef(null)
 
@@ -38,19 +81,14 @@ function SongInput({ onProcess }) {
   }
 
   async function pollJob(name) {
-    // Poll /api/jobs/{name} until done or error
     while (true) {
-      await new Promise((r) => setTimeout(r, 2000))
-      try {
-        const res = await fetch(`/api/jobs/${encodeURIComponent(name)}`)
-        if (!res.ok) throw new Error(`Poll failed: ${res.status}`)
-        const data = await res.json()
-        setProgress(data.status === 'done' ? 'Complete!' : `${data.status} (${Math.round(data.progress)}%)`)
-        if (data.status === 'done') return data
-        if (data.status === 'error') throw new Error(data.error || 'Processing failed')
-      } catch (err) {
-        throw err
-      }
+      await new Promise((r) => setTimeout(r, 1500))
+      const res = await fetch(`/api/jobs/${encodeURIComponent(name)}`)
+      if (!res.ok) throw new Error(`Poll failed: ${res.status}`)
+      const data = await res.json()
+      setJobStatus({ status: data.status, progress: data.progress || 0 })
+      if (data.status === 'done') return data
+      if (data.status === 'error') throw new Error(data.error || 'Processing failed')
     }
   }
 
@@ -67,7 +105,8 @@ function SongInput({ onProcess }) {
 
     setError(null)
     setLoading(true)
-    setProgress('Uploading...')
+    setStartTime(Date.now())
+    setJobStatus({ status: 'uploading', progress: 0 })
 
     try {
       const formData = new FormData()
@@ -86,7 +125,7 @@ function SongInput({ onProcess }) {
       }
 
       const { name } = await res.json()
-      setProgress('Processing started...')
+      setJobStatus({ status: 'queued', progress: 0 })
 
       // Poll until processing completes
       await pollJob(name)
@@ -105,8 +144,49 @@ function SongInput({ onProcess }) {
       setError(err.message)
     } finally {
       setLoading(false)
-      setProgress(null)
+      setJobStatus(null)
+      setStartTime(null)
     }
+  }
+
+  if (loading && jobStatus) {
+    const overall = getOverallProgress(jobStatus.status, jobStatus.progress)
+    const label = STEP_LABELS[jobStatus.status] || jobStatus.status
+    const isSeparating = jobStatus.status === 'separating'
+
+    return (
+      <div className="processing-panel">
+        <div className="processing-header">
+          <span className="processing-title">Processing: {songName}</span>
+          {startTime && <ElapsedTime startTime={startTime} />}
+        </div>
+
+        <div className="progress-bar-container">
+          <div className="progress-bar-fill" style={{ width: `${overall}%` }} />
+        </div>
+
+        <div className="progress-details">
+          <span className="progress-step">{label}</span>
+          {isSeparating && (
+            <span className="progress-hint">This takes a few minutes — Demucs is running 4 models</span>
+          )}
+        </div>
+
+        <div className="progress-steps">
+          {['Upload', 'Convert', 'Separate', 'Done'].map((step, i) => {
+            const stepKeys = [['uploading'], ['converting', 'downloading', 'downloaded'], ['separating'], ['done']]
+            const isActive = stepKeys[i].includes(jobStatus.status)
+            const isPast = getStepIndex(jobStatus.status) > getStepIndex(stepKeys[i][stepKeys[i].length - 1])
+            return (
+              <div key={step} className={`progress-step-dot${isActive ? ' active' : ''}${isPast ? ' past' : ''}`}>
+                <div className="dot" />
+                <span>{step}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -173,7 +253,7 @@ function SongInput({ onProcess }) {
       {error && <p className="error-msg">{error}</p>}
 
       <button type="submit" className="submit-btn" disabled={loading}>
-        {loading ? (progress || 'Processing...') : 'Make Karaoke Track'}
+        Make Karaoke Track
       </button>
     </form>
   )
