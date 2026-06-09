@@ -23,7 +23,7 @@ output/kisi-ranjish/
     vocals.wav                          — isolated vocals  (use as reference)
 ```
 
-Processing takes ~6–7 minutes per song on an M4 Mac (Apple Silicon MPS acceleration).
+Separation runs at roughly 0.7× song length on an M4 Mac (Apple Silicon MPS) — a measured 4½-minute song took ~3 minutes end-to-end with `htdemucs_ft`. CPU-only runs (the Docker/Railway build) are several times slower.
 
 ---
 
@@ -184,15 +184,14 @@ jiyajale/
 │   │       └── AudioPlayer.jsx — Playback with pitch slider
 │   └── package.json
 ├── docs/plans/          — Design docs and implementation plans
-├── PROCESS.md           — Technical one-pager
-└── WALKTHROUGH.md       — How this was built with Claude Code
+└── PROCESS.md           — Technical one-pager
 ```
 
 ---
 
 ## Background
 
-Built in ~15 minutes using [Claude Code](https://claude.com/claude-code). See [PROCESS.md](PROCESS.md) for technical details.
+Built with [Claude Code](https://claude.com/claude-code): the CLI tool, web UI, and Railway deploy came together in a single evening session, with iteration in the months since. See [PROCESS.md](PROCESS.md) for technical details.
 
 ---
 

@@ -58,7 +58,7 @@ output/kisi-ranjish/
 ./separate.sh "https://youtube.com/watch?v=..." "song-name"
 ```
 
-Takes roughly 6-7 minutes per song on the M4 Mac (most of that is the AI separation, download is seconds).
+Takes roughly 0.7× the song length on the M4 Mac — a measured 4½-minute song separated in ~3 minutes (download is seconds; nearly all the time is the AI separation).
 
 ## Key Decisions
 

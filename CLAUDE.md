@@ -28,7 +28,6 @@ jiyajale/
   separate.sh          # CLI entry point - downloads and separates a song
   requirements.txt     # Python dependencies (pip freeze)
   PROCESS.md           # Technical one-pager on how the tool works
-  WALKTHROUGH.md       # Story of building this with Claude Code
   output/              # Generated audio files (gitignored)
     <song-name>/
       original.wav
@@ -60,4 +59,4 @@ pip install -r requirements.txt
 
 ## Current Phase
 
-Phase 1 (CLI tool) is complete. Phase 2 (local web app with FastAPI + React) is planned - see `docs/plans/` for the design doc.
+Phase 1 (CLI tool) and Phase 2 (FastAPI + React web app) are both complete. The web app ships in Docker and targets Railway for deployment. Design docs live in `docs/plans/`.
