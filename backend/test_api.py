@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -198,12 +199,26 @@ class TestProcess:
                 data={"query": "some song", "song_name": song_name},
             )
 
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["name"] == song_name
-        assert "original" in data
-        assert "instrumental" in data
-        assert "vocals" in data
+            # /api/process is fire-and-forget: it returns immediately and
+            # the pipeline runs in a background thread.
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["name"] == song_name
+            assert data["status"] == "processing"
+
+            # Poll the job endpoint (inside the patch so the background
+            # thread hits the mock) until the mocked pipeline completes.
+            status = None
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                job = client.get(f"/api/jobs/{song_name}").json()
+                status = job["status"]
+                if status in ("done", "error"):
+                    break
+                time.sleep(0.05)
+
+        assert status == "done"
+        mock_ps.assert_called_once()
 
     def test_process_no_query_no_file_returns_400(self, tmp_path: Path) -> None:
         app = _get_app(tmp_path)
